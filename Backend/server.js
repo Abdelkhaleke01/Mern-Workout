@@ -1,24 +1,58 @@
-// Importeer Express
+// Importeer modules
 import express from 'express';
+import mongoose from 'mongoose';
+import cors from 'cors';
+import workoutRoutes from './routes/workouts.js';
 
 // Maak Express app
 const app = express();
 
-// Haal PORT uit .env (of gebruik 4000)
+// Haal variabelen uit .env
 const PORT = process.env.PORT || 4000;
+const MONGODB_URI = process.env.MONGODB_URI;
 
-// Middleware: lees JSON
+// Middleware
+app.use(cors());
 app.use(express.json());
 
-// Test route - reageer op GET /
-app.get('/workout', (req, res) => {
-  res.json({ 
-    message: 'Mijn eerste backend!',
-    success: true
+// ===== MONGODB VERBINDING =====
+mongoose.connect(MONGODB_URI)
+  .then(() => {
+    console.log('✅ Database verbonden');
+    
+    // Start server als database verbonden is
+    app.listen(PORT, () => {
+      console.log(`✅ Server draait op http://localhost:${PORT}`);
+      console.log('✅ Database verbonden & server draait');
+    });
+  })
+  .catch((error) => {
+    console.error('❌ Database verbinding mislukt:', error.message);
+    process.exit(1);
+  });
+
+// ===== ROUTES =====
+
+// Homepage route
+app.get('/', (req, res) => {
+  res.status(200).json({ 
+    message: 'MERN Workout API',
+    version: '1.0.0',
+    status: 'Online',
+    endpoints: {
+      workouts: '/api/workouts'
+    }
   });
 });
 
-// Start de server
-app.listen(PORT, () => {
-  console.log(`Server draait op http://localhost:${PORT}`);
+// Workout routes
+app.use('/api/workouts', workoutRoutes);
+
+// Error handler - 404
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'Route niet gevonden',
+    path: req.path,
+    method: req.method
+  });
 });
