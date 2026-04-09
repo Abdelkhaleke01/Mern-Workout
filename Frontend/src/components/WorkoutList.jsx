@@ -1,6 +1,6 @@
 import WorkoutItem from './WorkoutItem';
 
-export default function WorkoutList({ workouts, onWorkoutUpdate, onWorkoutDelete }) {
+export default function WorkoutList({ workouts, token, onWorkoutUpdate, onWorkoutDelete }) {
   if (!workouts || workouts.length === 0) {
     return (
       <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
@@ -17,6 +17,7 @@ export default function WorkoutList({ workouts, onWorkoutUpdate, onWorkoutDelete
           <WorkoutItem
             key={workout._id}
             workout={workout}
+            token={token}
             onUpdate={onWorkoutUpdate}
             onDelete={onWorkoutDelete}
           />

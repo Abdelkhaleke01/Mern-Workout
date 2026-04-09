@@ -6,8 +6,12 @@ import {
   updateWorkout,
   deleteWorkout
 } from '../controllers/workoutController.js';
+import { requireAuth } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
+
+// Protected workout routes
+router.use(requireAuth);
 
 // READ routes
 router.get('/', getAllWorkouts);

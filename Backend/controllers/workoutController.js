@@ -6,7 +6,7 @@ import mongoose from 'mongoose';
 // GET all workouts
 export const getAllWorkouts = async (req, res) => {
   try {
-    const workouts = await Workout.find().sort({ createdAt: -1 });
+    const workouts = await Workout.find({ userId: req.user.id }).sort({ createdAt: -1 });
     
     res.status(200).json({
       success: true,
@@ -34,7 +34,7 @@ export const getWorkoutById = async (req, res) => {
       });
     }
 
-    const workout = await Workout.findById(id);
+    const workout = await Workout.findOne({ _id: id, userId: req.user.id });
 
     if (!workout) {
       return res.status(404).json({
@@ -80,6 +80,7 @@ export const createWorkout = async (req, res) => {
 
     // Maak nieuw workout object
     const workout = new Workout({
+      userId: req.user.id,
       title: title.trim(),
       load,
       reps
@@ -128,14 +129,46 @@ export const updateWorkout = async (req, res) => {
 
     const { title, load, reps } = req.body;
 
-    // Maak update object
-    const updateData = {};
-    if (title !== undefined) updateData.title = title.trim();
-    if (load !== undefined) updateData.load = load;
-    if (reps !== undefined) updateData.reps = reps;
+    // Validatie: minimaal één veld moet worden bijgewerkt
+    if (title === undefined && load === undefined && reps === undefined) {
+      return res.status(400).json({
+        success: false,
+        error: 'Geef minimaal één veld op om bij te werken: title, load of reps'
+      });
+    }
 
-    const workout = await Workout.findByIdAndUpdate(
-      id,
+    // Validatie van types
+    const updateData = {};
+    if (title !== undefined) {
+      if (typeof title !== 'string') {
+        return res.status(400).json({
+          success: false,
+          error: 'Title moet een string zijn'
+        });
+      }
+      updateData.title = title.trim();
+    }
+    if (load !== undefined) {
+      if (typeof load !== 'number') {
+        return res.status(400).json({
+          success: false,
+          error: 'Load moet een nummer zijn'
+        });
+      }
+      updateData.load = load;
+    }
+    if (reps !== undefined) {
+      if (typeof reps !== 'number') {
+        return res.status(400).json({
+          success: false,
+          error: 'Reps moet een nummer zijn'
+        });
+      }
+      updateData.reps = reps;
+    }
+
+    const workout = await Workout.findOneAndUpdate(
+      { _id: id, userId: req.user.id },
       updateData,
       { new: true, runValidators: true }
     );
@@ -184,7 +217,7 @@ export const deleteWorkout = async (req, res) => {
       });
     }
 
-    const workout = await Workout.findByIdAndDelete(id);
+    const workout = await Workout.findOneAndDelete({ _id: id, userId: req.user.id });
 
     if (!workout) {
       return res.status(404).json({

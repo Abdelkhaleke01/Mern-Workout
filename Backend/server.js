@@ -3,6 +3,8 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import workoutRoutes from './routes/workouts.js';
+import authRoutes from './routes/auth.js';
+import appointmentRoutes from './routes/appointments.js';
 
 // Maak Express app
 const app = express();
@@ -36,17 +38,24 @@ mongoose.connect(MONGODB_URI)
 // Homepage route
 app.get('/', (req, res) => {
   res.status(200).json({ 
-    message: 'MERN Workout API',
+    message: 'Barber Booking API',
     version: '1.0.0',
     status: 'Online',
     endpoints: {
-      workouts: '/api/workouts'
+      auth: '/api/auth',
+      appointments: '/api/appointments'
     }
   });
 });
 
 // Workout routes
 app.use('/api/workouts', workoutRoutes);
+
+// Auth routes
+app.use('/api/auth', authRoutes);
+
+// Appointment routes
+app.use('/api/appointments', appointmentRoutes);
 
 // Error handler - 404
 app.use((req, res) => {

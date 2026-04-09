@@ -1,31 +1,49 @@
 import { useState, useEffect } from 'react';
-import WorkoutForm from './components/WorkoutForm';
-import WorkoutList from './components/WorkoutList';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import Services from './components/Services';
+import BookingForm from './components/BookingForm';
+import AppointmentList from './components/AppointmentList';
+import Login from './components/Login';
+import Register from './components/Register';
+import Navbar from './components/Navbar';
+import ProtectedRoute from './components/ProtectedRoute';
 
 export default function App() {
-  const [workouts, setWorkouts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState(localStorage.getItem('token') || '');
+  const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
-  // Laad workouts bij mount en na updates
   useEffect(() => {
-    fetchWorkouts();
-  }, []);
+    if (token) {
+      fetchAppointments();
+    } else {
+      setAppointments([]);
+      setLoading(false);
+    }
+  }, [token]);
 
-  const fetchWorkouts = async () => {
+  const fetchAppointments = async () => {
+    if (!token) return;
+
     setLoading(true);
     setError('');
-    
+
     try {
-      const response = await fetch('http://localhost:4000/api/workouts');
-      
+      const response = await fetch('http://localhost:4000/api/appointments', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
       if (!response.ok) {
-        throw new Error('Fout bij het ophalen van workouts');
+        const data = await response.json();
+        throw new Error(data.error || 'Fout bij het ophalen van afspraken');
       }
 
       const data = await response.json();
-      console.log('✅ Workouts geladen:', data);
-      setWorkouts(data.data || []);
+      setAppointments(data.data || []);
     } catch (err) {
       setError(err.message);
       console.error('❌ Fetch error:', err);
@@ -34,25 +52,35 @@ export default function App() {
     }
   };
 
-  const handleWorkoutAdded = () => {
-    console.log('🔄 Herlaad workouts na toevoegen...');
-    fetchWorkouts();
+  const handleAuth = (newToken) => {
+    localStorage.setItem('token', newToken);
+    setToken(newToken);
   };
 
-  const handleWorkoutUpdate = () => {
-    console.log('🔄 Herlaad workouts na update...');
-    fetchWorkouts();
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    setToken('');
+    setAppointments([]);
+    navigate('/login');
   };
 
-  const handleWorkoutDelete = () => {
-    console.log('🔄 Herlaad workouts na verwijdering...');
-    fetchWorkouts();
+  const onBookingCreated = () => {
+    fetchAppointments();
   };
 
-  return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-      <h1>💪 MERN Workout App</h1>
-      
+  const onAppointmentCanceled = () => {
+    fetchAppointments();
+  };
+
+  const ServicesPage = (
+    <div style={{ fontFamily: 'Arial, sans-serif' }}>
+      <Services />
+    </div>
+  );
+
+  const AppointmentsPage = (
+    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+      <h1>Mijn afspraken</h1>
       {error && (
         <div style={{
           padding: '15px',
@@ -65,20 +93,57 @@ export default function App() {
           ❌ {error}
         </div>
       )}
-
-      <WorkoutForm onWorkoutAdded={handleWorkoutAdded} />
-
       {loading ? (
         <div style={{ textAlign: 'center', padding: '20px' }}>
           <p>⏳ Bezig met laden...</p>
         </div>
       ) : (
-        <WorkoutList
-          workouts={workouts}
-          onWorkoutUpdate={handleWorkoutUpdate}
-          onWorkoutDelete={handleWorkoutDelete}
-        />
+        <AppointmentList appointments={appointments} token={token} onCanceled={onAppointmentCanceled} />
       )}
+    </div>
+  );
+
+  return (
+    <div style={{ fontFamily: 'Arial, sans-serif', maxWidth: '900px', margin: '0 auto', padding: '20px' }}>
+      <Navbar token={token} onLogout={handleLogout} />
+      <Routes>
+        <Route path="/" element={token ? <Navigate to="/services" replace /> : <Navigate to="/login" replace />} />
+        <Route path="/login" element={token ? <Navigate to="/services" replace /> : <Login onAuth={handleAuth} />} />
+        <Route path="/register" element={token ? <Navigate to="/services" replace /> : <Register onAuth={handleAuth} />} />
+        <Route
+          path="/services"
+          element={
+            <ProtectedRoute token={token}>
+              {ServicesPage}
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/book/:service"
+          element={
+            <ProtectedRoute token={token}>
+              <BookingForm token={token} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/book"
+          element={
+            <ProtectedRoute token={token}>
+              <BookingForm token={token} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/appointments"
+          element={
+            <ProtectedRoute token={token}>
+              {AppointmentsPage}
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </div>
   );
 }
